@@ -1,0 +1,3 @@
+dataset_no_contrast/test/*
+dataset_no_contrast/train/*
+dataset_no_contrast/annotations/*
