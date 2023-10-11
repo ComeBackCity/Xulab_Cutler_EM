@@ -4,17 +4,14 @@ import json
 import numpy as np
 from PIL import Image, ImageDraw
 from pycocotools import mask as mask_utils
+import random
 
 def visualize_and_save_annotations(annotation_file, image_dir, output_dir):
     # Load COCO format annotations
     with open(annotation_file, 'r') as f:
         coco_annotations = json.load(f)
-    
-    print(coco_annotations)
-    # Create a color map for object categories
-    category_colors = {}
-    for category in coco_annotations['categories']:
-        category_colors[category['id']] = tuple(int(255 * x) for x in np.random.rand(3))
+
+    # print(coco_annotations)
 
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -23,39 +20,44 @@ def visualize_and_save_annotations(annotation_file, image_dir, output_dir):
     for image_info in coco_annotations['images']:
         # Load the RGB image using Pillow
         image_path = os.path.join(image_dir, image_info['file_name'])
-        image = Image.open(image_path)
+        # print(image_path)
+        image = Image.open(image_path).convert('RGB')
 
         # Retrieve annotations for the current image
         annotations = [ann for ann in coco_annotations['annotations'] if ann['image_id'] == image_info['id']]
 
         # Create a drawing object for annotations
-        draw = ImageDraw.Draw(image)
 
-        # Add segmentation masks and object color splashes for annotations
-        for annotation in annotations:
-            category_id = annotation['category_id']
-            color = category_colors.get(category_id, (255, 0, 0))
-            
-            print(annotation['segmentation'])
+
+        # Assign a unique color to each mask while keeping the same color for the mask and its respective bounding box
+        for idx, annotation in enumerate(annotations):
+            mask_color = tuple(random.sample(range(0, 255), 3))
+
             # Extract segmentation mask
-            segmentation = annotation['segmentation'][0]  # Assuming only one segmentation per annotation
+            segmentation = annotation['segmentation']  # Assuming only one segmentation per annotation
 
             # Convert segmentation to a binary mask
             mask = mask_utils.decode(segmentation)
 
-            # Create a mask image using Pillow
-            mask_image = Image.fromarray(mask * 255).convert('L')
-
             # Create an RGBA image with object color splash
             splash_image = Image.new('RGBA', image.size, (0, 0, 0, 0))
-            splash_image.paste(color + (128,), mask=mask_image)
+            splash_image.paste(mask_color + (128,), mask=Image.fromarray((mask * 255).astype(np.uint8)))
 
             # Composite the splash image onto the original image
             image = Image.alpha_composite(image.convert('RGBA'), splash_image)
+            draw = ImageDraw.Draw(image)
+
+            # Draw bounding box
+            bbox = annotation['bbox']
+            x, y, w, h = bbox
+            # print(bbox)
+            # print(mask_color)
+            draw.rectangle([x, y, x + w, y + h], outline=mask_color, width=2)
 
         # Save the annotated image to the output directory
         output_image_path = os.path.join(output_dir, image_info['file_name'])
-        image.convert('RGB').save(output_image_path)
+        image = image.convert('RGB')  # Convert back to RGB mode
+        image.save(output_image_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Visualize and save images with COCO format annotations')
