@@ -25,7 +25,6 @@ def calculate_iou(box1, box2):
 
 def evaluate_image(gt_boxes, dt_boxes, iou_thresholds):
     results = {threshold: {"tp": 0, "fp": 0, "fn": 0} for threshold in iou_thresholds}
-    recall_results = []
 
     for gt_box in gt_boxes:
         for dt_box in dt_boxes:
@@ -40,11 +39,7 @@ def evaluate_image(gt_boxes, dt_boxes, iou_thresholds):
     for threshold in iou_thresholds:
         results[threshold]["fn"] = len(gt_boxes) - results[threshold]["tp"]
 
-    for threshold in iou_thresholds:
-        recall = results[threshold]["tp"] / (results[threshold]["tp"] + results[threshold]["fn"])
-        recall_results.append(recall)
-
-    return results, recall_results
+    return results
 
 def main(args):
     gt_dir = args.gt_directory
@@ -74,10 +69,11 @@ def main(args):
 
     mAP_sum = 0
     APs = {threshold: 0 for threshold in iou_thresholds}
-    recall_sum = {threshold: 0 for threshold in iou_thresholds}
+    ARs = {threshold: 0 for threshold in iou_thresholds}
 
     for threshold in iou_thresholds:
         precision_sum = 0
+        recall_sum = 0
         image_count = 0
         skipped_images = 0
 
@@ -86,15 +82,11 @@ def main(args):
                 skipped_images += 1
                 continue  # Skip non-image files
 
-            # Load ground truth and detection data for the current image
-            # image_id = os.path.splitext(image_filename)[0]  # Assuming image filenames match detection file IDs
             if image_filename not in name_to_id_mapper:
                 continue
 
             gt_boxes = []  # You need to load the corresponding ground truth boxes
             gt_annotation_filename = f"{gt_dir}{image_filename[:-4]}.xml"
-            # print(gt_annotation_filename)
-            # exit()
            
             if not os.path.exists(gt_annotation_filename):
                 skipped_images += 1
@@ -133,27 +125,23 @@ def main(args):
             else:
                 dt_boxes = []  # No detections for this image
 
-            results, recall_results = evaluate_image(gt_boxes, dt_boxes, [threshold])
+            results = evaluate_image(gt_boxes, dt_boxes, [threshold])
             precision = results[threshold]["tp"] / (results[threshold]["tp"] + results[threshold]["fp"])
+            recall = results[threshold]["tp"] / (results[threshold]["tp"] + results[threshold]["fn"])
             precision_sum += precision
-            recall_sum[threshold] += sum(recall_results)
+            recall_sum += recall
             image_count += 1
         
         print(skipped_images)
         print(image_count)
         average_precision = precision_sum / image_count
         APs[threshold] = average_precision
-        mAP_sum += average_precision
+        average_recall = recall_sum / image_count
+        ARs[threshold] = average_recall
 
         print(f"IoU Threshold {threshold}:")
         print(f"Average Precision: {average_precision}")
-        print(f"Average Recall: {recall_sum[threshold] / image_count}")
-
-    final_mAP = mAP_sum / len(iou_thresholds)
-    final_recall = {threshold: recall_sum[threshold] / image_count for threshold in iou_thresholds}
-
-    print(f"Mean Average Precision (mAP): {final_mAP}")
-    print("Average Recall:", final_recall)
+        print(f"Average Recall: {average_recall}")
 
     # Save results to a CSV file
     output_file = args.output_csv
@@ -167,7 +155,7 @@ def main(args):
 
         writer.writeheader()
         for threshold in iou_thresholds:
-            writer.writerow({'IoU Threshold': threshold, 'Average Precision': APs[threshold], 'Average Recall': final_recall[threshold]})
+            writer.writerow({'IoU Threshold': threshold, 'Average Precision': APs[threshold], 'Average Recall': ARs[threshold]})
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate object detection results")

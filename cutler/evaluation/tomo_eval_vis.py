@@ -26,7 +26,6 @@ def calculate_iou(box1, box2):
 
 def evaluate_image(gt_boxes, dt_boxes, iou_thresholds, image_path, draw_directory=None):
     results = {threshold: {"tp": 0, "fp": 0, "fn": 0} for threshold in iou_thresholds}
-    recall_results = []
 
     image = Image.open(image_path).convert("RGB")
     draw = ImageDraw.Draw(image)
@@ -45,10 +44,6 @@ def evaluate_image(gt_boxes, dt_boxes, iou_thresholds, image_path, draw_director
     for threshold in iou_thresholds:
         results[threshold]["fn"] = len(gt_boxes) - results[threshold]["tp"]
 
-    for threshold in iou_thresholds:
-        recall = results[threshold]["tp"] / (results[threshold]["tp"] + results[threshold]["fn"])
-        recall_results.append(recall)
-
     if draw_directory:
         image_with_boxes = image.copy()
         draw_with_boxes = ImageDraw.Draw(image_with_boxes)
@@ -65,7 +60,7 @@ def evaluate_image(gt_boxes, dt_boxes, iou_thresholds, image_path, draw_director
 
         image_with_boxes.save(os.path.join(draw_directory, os.path.basename(image_path)))
 
-    return results, recall_results
+    return results
 
 def main(args):
     gt_dir = args.gt_directory
