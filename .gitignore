@@ -131,3 +131,6 @@ venv.bak/
 
 cutler/output/*
 cutler/vis_out/*
+cutler/output*
+datasets/*
+maskcut/how_to_run.txt

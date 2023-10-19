@@ -61,6 +61,10 @@ _PREDEFINED_SPLITS_TOMO["tomo_mito"] = {
     # maskcut annotations
     "tomo_mito": ("dataset_no_contrast/train", "dataset_no_contrast/annotations/imagenet_train_fixsize480_tau0.15_N3_0_1.json"),
     "tomo_mito_r1": ("dataset_no_contrast/train", "dataset_no_contrast/annotations/cutler_tomo_train_r1.json"),
+    # "tomo_mito_train" : 2,
+    # "tomo_mito_train_r1" : 2,
+    "tomo_mito_test" : ("dataset_ramisa/test", "dataset_ramisa/annotations_generated_test/imagenet_train_fixsize480_tau0.15_N3_0_1.json"),
+    "tomo_mito_test_r1" : ("dataset_ramisa/test", "dataset_ramisa/annotations_generated_test/cutler_tomo_mito_new_test_r1.json"),
 }
 
 
