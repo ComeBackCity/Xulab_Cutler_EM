@@ -32,18 +32,15 @@ def evaluate_image(gt_boxes, dt_boxes, iou_thresholds, image_path, draw_director
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
 
-    for dt_box in dt_boxes:
-        iou_max = 0
-        for gt_box in gt_boxes:
+    for gt_box in gt_boxes:
+        for dt_box in dt_boxes:
             iou = calculate_iou(gt_box, dt_box)
-            iou_max = max(iou_max, iou)
 
-        for threshold in iou_thresholds:
-            if iou_max >= threshold:
-                results[threshold]["tp"] += 1
-                break
-        else:
-            results[threshold]["fp"] += 1
+            for threshold in iou_thresholds:
+                if iou >= threshold and results[threshold]["tp"] == 0:
+                    results[threshold]["tp"] = 1
+                else:
+                    results[threshold]["fp"] += 1
 
     for threshold in iou_thresholds:
         results[threshold]["fn"] = len(gt_boxes) - results[threshold]["tp"]
@@ -80,24 +77,6 @@ def main(args):
     with open(detection_file, "r") as dt_file:
         detection_data = json.load(dt_file)
 
-    image_info = detection_data['images']
-    annotations = detection_data["annotations"]
-    name_to_id_mapper = {}
-    id_to_ann_mapper = {}
-
-    for info in image_info:
-        name = info["file_name"][2:]
-        im_id = info["id"]
-        name_to_id_mapper.update({name: im_id})
-        
-    for ann in annotations:
-        im_id = ann["image_id"]
-        ann_list = []
-        if im_id in id_to_ann_mapper:
-            ann_list = id_to_ann_mapper[im_id]
-        ann_list.append(ann)
-        id_to_ann_mapper.update({im_id: ann_list})
-
     mAP_sum = 0
     recall_sum = {threshold: 0 for threshold in iou_thresholds}
 
@@ -111,7 +90,7 @@ def main(args):
                 skipped_images += 1
                 continue  # Skip non-image files
 
-            if image_filename not in name_to_id_mapper:
+            if image_filename not in detection_data:
                 continue
 
             gt_boxes = []
@@ -142,10 +121,8 @@ def main(args):
             
             gt_boxes.append([xmin, ymin, xmax - xmin, ymax - ymin])
 
-            if image_filename in name_to_id_mapper:
-                im_id = name_to_id_mapper[image_filename]
-                ann_list = id_to_ann_mapper[im_id]
-                dt_boxes = [ann["bbox"] for ann in ann_list]
+            if image_filename in detection_data:
+                dt_boxes = detection_data[image_filename]
             else:
                 dt_boxes = []  # No detections for this image
 

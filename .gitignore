@@ -134,3 +134,4 @@ cutler/vis_out/*
 cutler/output*
 datasets/*
 maskcut/how_to_run.txt
+selective_search/output
