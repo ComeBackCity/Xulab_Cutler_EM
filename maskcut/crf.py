@@ -35,8 +35,15 @@ def densecrf(image, mask):
     U = utils.unary_from_softmax(output_probs)
     U = np.ascontiguousarray(U)
 
+    # Create the pairwise bilateral term from the above image.
+    # The two `s{dims,chan}` parameters are model hyper-parameters defining
+    # the strength of the location and image content bilaterals, respectively.
+    pairwise_energy = utils.create_pairwise_bilateral(sdims=(10,10), schan=(0.01,), img=image, chdim=2)
+
     d = dcrf.DenseCRF2D(w, h, c)
     d.setUnaryEnergy(U)
+    d.addPairwiseEnergy(pairwise_energy, compat=10)  # `compat` is the "strength" of this potential.
+    
     # d.addPairwiseGaussian(sxy=POS_XY_STD, compat=POS_W)
     # d.addPairwiseBilateral(sxy=Bi_XY_STD, srgb=Bi_RGB_STD, rgbim=image, compat=Bi_W)
 
