@@ -36,6 +36,8 @@ if __name__ == "__main__":
             k = k.replace("bn{}".format(t), "conv{}.norm".format(t))
         k = k.replace("downsample.0", "shortcut")
         k = k.replace("downsample.1", "shortcut.norm")
+        k = k.replace("backbone.res", "backbone.bottom_up.res")
+        k = k.replace("stem.backbone", "backbone.bottom_up.stem")
         print(old_k, "->", k)
         newmodel[k] = v.numpy()
 
