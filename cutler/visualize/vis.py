@@ -55,7 +55,10 @@ def visualize_and_save_annotations(annotation_file, image_dir, output_dir):
             draw.rectangle([x, y, x + w, y + h], outline=mask_color, width=2)
 
         # Save the annotated image to the output directory
-        output_image_path = os.path.join(output_dir, image_info['file_name'])
+        # print(image_info['file_name'])
+        file_name = image_info['file_name'].split('/')[-1]
+        output_image_path = os.path.join(output_dir, file_name)
+        print(output_image_path)
         image = image.convert('RGB')  # Convert back to RGB mode
         image.save(output_image_path)
 

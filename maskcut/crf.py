@@ -38,7 +38,10 @@ def densecrf(image, mask):
     # Create the pairwise bilateral term from the above image.
     # The two `s{dims,chan}` parameters are model hyper-parameters defining
     # the strength of the location and image content bilaterals, respectively.
+    # print(type(image))
+    image = np.expand_dims(image, axis=2)
     pairwise_energy = utils.create_pairwise_bilateral(sdims=(10,10), schan=(0.01,), img=image, chdim=2)
+    image = np.squeeze(image)
 
     d = dcrf.DenseCRF2D(w, h, c)
     d.setUnaryEnergy(U)
