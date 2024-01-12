@@ -13,12 +13,14 @@ import PIL
 import PIL.Image as Image
 import torch
 import torch.nn.functional as F
+import torchvision
 from torchvision import transforms
 from pycocotools import mask
 import pycocotools.mask as mask_util
 from scipy import ndimage
 from scipy.linalg import eigh
 import json
+import cv2
 import matplotlib.pyplot as plt
 
 import dino
@@ -40,11 +42,6 @@ ToTensor_sc = transforms.Compose([transforms.ToTensor(),
                                transforms.Normalize(
                                 (0.485),
                                 (0.229)),])
-
-ToTensor_apo = transforms.Compose([transforms.ToTensor(),
-                               transforms.Normalize(
-                                (0.406),
-                                (0.225)),])
 
 ToTensor_klh = transforms.Compose([transforms.ToTensor(),
                                transforms.Normalize(
@@ -124,10 +121,10 @@ def maskcut_forward(feats, dims, scales, init_image_size, tau=0, N=3, cpu=False)
         # 1) peak of the 2nd smallest eigvec 2) object centric bias
         seed = np.argmax(np.abs(second_smallest_vec))
         nc = check_num_fg_corners(bipartition, dims)
-        # if nc >= 3:
-        #     reverse = True
-        # else:
-        reverse = bipartition[seed] != 1
+        if nc >= 3:
+            reverse = True
+        else:
+            reverse = bipartition[seed] != 1
 
         if reverse:
             # reverse bipartition, eigenvector and get new seed
@@ -172,18 +169,15 @@ def maskcut_forward(feats, dims, scales, init_image_size, tau=0, N=3, cpu=False)
     return seed, bipartitions, eigvecs
 
 def maskcut(img_path, backbone,patch_size, tau, N=1, fixed_size=480, cpu=False) :
-    # I = Image.open(img_path).convert('RGB')
     I = Image.open(img_path)
-    # print(np.array(I).shape)
     bipartitions, eigvecs = [], []
 
     I_new = I.resize((int(fixed_size), int(fixed_size)), PIL.Image.LANCZOS)
 
     I_resize, w, h, feat_w, feat_h = utils.resize_pil(I_new, patch_size)
     # tensor = ToTensor(I_resize).unsqueeze(0)
+    # tensor = ToTensor_sc(I_resize).unsqueeze(0)
     tensor = ToTensor_sc(I_resize).unsqueeze(0)
-    # tensor = ToTensor_apo(I_resize).unsqueeze(0)
-    # tensor = ToTensor_klh(I_resize).unsqueeze(0)
     if not cpu: tensor = tensor.cuda()
     feats = backbone(tensor)
     feat = feats[0]
@@ -194,6 +188,154 @@ def maskcut(img_path, backbone,patch_size, tau, N=1, fixed_size=480, cpu=False) 
     eigvecs += eigvec
 
     return bipartitions, eigvecs, I_new
+
+def intensity_based_clustering(attention_map, min_mask_area, iou_threshold):
+    num_clusters = 5
+
+    # Reshape the attention map to a 1D array of intensities
+    intensities = attention_map.flatten().reshape(-1, 1).astype(np.float32)
+
+    # Apply K-means clustering to pixel intensities using cv2.kmeans
+    _, labels, centers = cv2.kmeans(intensities, num_clusters, None, criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2), attempts=10, flags=cv2.KMEANS_RANDOM_CENTERS)
+
+    # Assign each pixel to the nearest cluster
+    labels = labels.reshape(attention_map.shape)
+
+    # Create masks based on clusters
+    masks = [np.where(labels == i, 1, 0) for i in range(num_clusters)]
+
+    # Filter out small masks
+    filtered_masks = [mask for mask in masks if np.sum(mask) >= min_mask_area]
+
+    # Remove masks with low IoU threshold
+    final_masks = []
+    for i in range(len(filtered_masks)):
+        keep_mask = True
+        for j in range(i + 1, len(filtered_masks)):
+            iou = calculate_iou(filtered_masks[i], filtered_masks[j])
+            if iou >= iou_threshold:
+                keep_mask = False
+                break
+        if keep_mask:
+            final_masks.append(filtered_masks[i].squeeze())
+
+    return final_masks
+
+
+def our_clustering2(im):
+    # Double the image
+    img = im.astype(float)
+    print(img)
+
+    row, col = img.shape
+
+    # Convert the image from 2D to 1D image space
+    img_vector = img.reshape(-1)
+
+    # Specify the number of clusters
+    clusters = 4
+
+    # Cluster initialization
+    cluster = [np.zeros_like(img_vector) for _ in range(clusters)]
+
+    # Range
+    range_val = np.max(img_vector) - np.min(img_vector)
+
+    # Determine the number of steps
+    stepv = range_val / clusters
+
+    # K-Means initialization
+    K = np.arange(stepv, np.max(img_vector), stepv)
+
+    for ii in range(img_vector.shape[0]):
+        difference = np.abs(K - img_vector[ii])
+        ind = np.argmin(difference)
+        cluster[ind][ii] = img_vector[ii]
+
+    cluster_1 = cluster[0].reshape((row, col))
+    C1 = np.zeros_like(cluster_1)
+    C1[cluster_1 != 0] = 1
+
+    cluster_2 = cluster[1].reshape((row, col))
+    C2 = np.zeros_like(cluster_2)
+    C2[cluster_2 != 0] = 2
+
+    cluster_3 = cluster[2].reshape((row, col))
+    C3 = np.zeros_like(cluster_3)
+    C3[cluster_3 != 0] = 3
+
+    cluster_4 = cluster[3].reshape((row, col))
+    C4 = np.zeros_like(cluster_4)
+    C4[cluster_4 != 0] = 4
+    
+    print(C1)
+    print(C2)
+    print(C3)
+    print(C4)
+    exit()
+
+    return C1, C2, C3, C4
+
+def calculate_iou(mask1, mask2):
+    intersection = np.logical_and(mask1, mask2)
+    union = np.logical_or(mask1, mask2)
+    iou = np.sum(intersection) / np.sum(union)
+    return iou
+
+# def clustering(img_path, backbone,patch_size, tau, N=1, fixed_size=480, cpu=False) :
+#     I = Image.open(img_path)
+#     bipartitions, eigvecs = [], []
+
+#     I_new = I.resize((int(fixed_size), int(fixed_size)), PIL.Image.LANCZOS)
+
+#     I_resize, w, h, feat_w, feat_h = utils.resize_pil(I_new, patch_size)
+#     # tensor = ToTensor(I_resize).unsqueeze(0)
+#     # tensor = ToTensor_sc(I_resize).unsqueeze(0)
+#     tensor = ToTensor_sc(I_resize).unsqueeze(0)
+#     if not cpu: tensor = tensor.cuda()
+#     print(tensor.shape)
+#     feats = backbone.get_last_selfattention(tensor)
+#     feat = feats[0, 0].detach().cpu().numpy()
+#     print(feat.shape)
+#     plt.imsave(fname='../cutler/vis_out/apo/attn2/1.png', arr=feat, format='png')
+#     exit()
+
+#     clusters = our_clustering2(feat)
+
+#     return clusters, I_new
+
+def clustering(img_path, backbone,patch_size, tau, N=1, fixed_size=480, cpu=False) :
+    I = Image.open(img_path)
+
+    I_new = I.resize((int(fixed_size), int(fixed_size)), PIL.Image.LANCZOS)
+    # tensor = ToTensor(I_resize).unsqueeze(0)
+    # tensor = ToTensor_sc(I_resize).unsqueeze(0)
+    tensor = ToTensor_sc(I_new)
+    if not cpu: tensor = tensor.cuda()
+    img = tensor
+    
+    # make the image divisible by the patch size
+    w, h = img.shape[1] - img.shape[1] % patch_size, img.shape[2] - img.shape[2] % patch_size
+    img = img[:, :w, :h].unsqueeze(0)
+
+    w_featmap = img.shape[-2] // patch_size
+    h_featmap = img.shape[-1] // patch_size
+
+    attentions = backbone.get_last_selfattention(img)
+
+    nh = attentions.shape[1] # number of head
+
+    # we keep only the output patch attention
+    attentions = attentions[0, :, 0, 1:].reshape(nh, -1)
+    
+    attentions = attentions.reshape(nh, w_featmap, h_featmap)
+    attentions = F.interpolate(attentions.unsqueeze(0), scale_factor=args.patch_size, mode="nearest")[0].cpu().numpy()
+    attn_map = attentions[0]
+        
+    clusters = our_clustering2(attn_map)
+    exit()
+
+    return clusters, I_new
 
 def resize_binary_mask(array, new_size):
     image = Image.fromarray(array.astype(np.uint8)*255)
@@ -387,35 +529,49 @@ if __name__ == "__main__":
             # bipartitions, _, I_new = maskcut(img_path, backbone, args.patch_size, \
             #         args.tau, N=args.N, fixed_size=args.fixed_size, cpu=args.cpu)
             try:
-                bipartitions, _, I_new = maskcut(img_path, backbone, args.patch_size, \
+                bipartitions, I_new = clustering(img_path, backbone, args.patch_size, \
                     args.tau, N=args.N, fixed_size=args.fixed_size, cpu=args.cpu)
+                # bipartitions, _, I_new = maskcut(img_path, backbone, args.patch_size, \
+                #    args.tau, N=args.N, fixed_size=args.fixed_size, cpu=args.cpu)
             except Exception as e:
                 print(e)
                 print(f'Skipping {img_name}')
+                exit()
                 continue
+            
+            #for mask in pseudo_masks:
+            #    print(mask)
+            #    exit()
 
             # I = Image.open(img_path).convert('RGB')
+            #print(bipartitions)
+            #print(type(bipartitions))
+            #print(bipartitions[0])
+            #print(type(bipartitions[0]))
+            #print(I_new)
+            #print(type(I_new))
+            #exit()
             I = Image.open(img_path)
+            #print(I.mode)
+            #exit()
             width, height = I.size
             for idx, bipartition in enumerate(bipartitions):
                 # post-process pesudo-masks with CRF
                 pseudo_mask = densecrf(np.array(I_new), bipartition)
                 # pseudo_mask = bipartition
-                pseudo_mask = ndimage.binary_fill_holes(pseudo_mask>=0.5)
+                pseudo_mask = ndimage.binary_fill_holes(bipartition)
 
                 # filter out the mask that have a very different pseudo-mask after the CRF
                 mask1 = torch.from_numpy(bipartition)
                 mask2 = torch.from_numpy(pseudo_mask)
                 if not args.cpu: 
-                    mask1 = mask1.cuda()
-                    mask2 = mask2.cuda()
+                   mask1 = mask1.cuda()
+                   mask2 = mask2.cuda()
                 if metric.IoU(mask1, mask2) < 0.5:
-                    pseudo_mask = pseudo_mask * -1
+                   pseudo_mask = pseudo_mask * -1
 
                 # construct binary pseudo-masks
-                pseudo_mask[pseudo_mask < 0] = 0
-                # print(pseudo_mask.shape)
-                # exit()
+                #pseudo_mask[pseudo_mask < 0] = 0
                 pseudo_mask = Image.fromarray(np.uint8(pseudo_mask*255))
                 pseudo_mask = np.asarray(pseudo_mask.resize((width, height)))
                 #print(pseudo_mask)
@@ -440,9 +596,9 @@ if __name__ == "__main__":
 
     # save annotations
     if len(img_folders) == args.num_folder_per_job and args.job_index == 0:
-        json_name = '{}/imagenet_train_fixsize{}_tau{}_N{}.json'.format(args.out_dir, args.fixed_size, args.tau, args.N)
+        json_name = '{}/clustering_apo_train_fixsize{}_tau{}_N{}.json'.format(args.out_dir, args.fixed_size, args.tau, args.N)
     else:
-        json_name = '{}/imagenet_train_fixsize{}_tau{}_N{}_{}_{}.json'.format(args.out_dir, args.fixed_size, args.tau, args.N, start_idx, end_idx)
+        json_name = '{}/clustering_apo_train_fixsize{}_tau{}_N{}_{}_{}.json'.format(args.out_dir, args.fixed_size, args.tau, args.N, start_idx, end_idx)
     with open(json_name, 'w') as output_json_file:
         json.dump(output, output_json_file)
     print(f'dumping {json_name}')

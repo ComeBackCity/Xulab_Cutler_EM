@@ -291,14 +291,18 @@ class ViTFeat(nn.Module):
 #        state_dict = torch.load(pretrained_pth, map_location="cpu")
         if url:
             state_dict = torch.hub.load_state_dict_from_url(pretrained_pth)
+            # print("hi")
             print(state_dict.keys())
+            exit()
             # print(state_dict.device())
             self.model.load_state_dict(state_dict, strict=True)
         else:
-            state_dict = torch.load(pretrained_pth, map_location=torch.device('cpu'))
-            # print(state_dict['teacher'].keys())
+            state_dict = torch.load(pretrained_pth, map_location=torch.device('cpu'))['teacher']
+            # remove `module.` prefix
+            state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+            # remove `backbone.` prefix induced by multicrop wrapper
+            state_dict = {k.replace("backbone.", ""): v for k, v in state_dict.items()}
             self.model.load_state_dict(state_dict, strict=False)
-        # exit()
         print('Loading weight from {}'.format(pretrained_pth))
 
 
@@ -326,7 +330,7 @@ class ViTFeat(nn.Module):
             k = k.transpose(1, 2).reshape(bs, nb_token, -1)
             q = q.transpose(1, 2).reshape(bs, nb_token, -1)
             v = v.transpose(1, 2).reshape(bs, nb_token, -1)
-
+            
             # Modality selection
             if self.vit_feat == "k":
                 feats = k[:, 1:].transpose(1, 2).reshape(bs, self.feat_dim, feat_h * feat_w)
@@ -341,6 +345,9 @@ class ViTFeat(nn.Module):
                 feats = torch.cat([k, q, v], dim=1)
             return feats
 
+    def get_last_selfattention(self, x):
+        with torch.no_grad():
+            return self.model.get_last_selfattention(x)
 
 if __name__ == "__main__":
     vit_arch = 'base'

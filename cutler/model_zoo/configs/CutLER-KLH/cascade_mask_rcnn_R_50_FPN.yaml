@@ -4,18 +4,18 @@ DATALOADER:
   COPY_PASTE_RATE: 1.0
   VISUALIZE_COPY_PASTE: False
   COPY_PASTE_RANDOM_NUM: True
-  COPY_PASTE_MIN_RATIO: 0.5
+  COPY_PASTE_MIN_RATIO: 0.3
   COPY_PASTE_MAX_RATIO: 1.0
-  NUM_WORKERS: 2
+  NUM_WORKERS: 0
 MODEL:
-  # PIXEL_MEAN: [123.675, 116.280, 103.530]
-  # PIXEL_STD: [58.395, 57.120, 57.375]
-  PIXEL_MEAN: [ 130.3068 ]
-  PIXEL_STD: [ 64.8786 ]
-  # WEIGHTS: 'http://dl.fbaipublicfiles.com/cutler/checkpoints/cutler_cascade_r1.pth' # round 1
-  # WEIGHTS: 'http://dl.fbaipublicfiles.com/cutler/checkpoints/cutler_cascade_r2.pth' # round 2
-  # WEIGHTS: './output_new_dataset/model_final.pth' # Round 1
-  WEIGHTS: './output_new_dataset/model_final.pth' # Round 1
+#  PIXEL_MEAN: [123.675, 116.280, 103.530]
+#  PIXEL_STD: [58.395, 57.120, 57.375]
+#  PIXEL_MEAN: [ 123.675 ]
+#  PIXEL_STD: [ 58.395 ]
+  PIXEL_MEAN: [ 109.442 ]
+  PIXEL_STD: [ 6.4272 ]
+  WEIGHTS: '../maskcut/klh_ckpts/checkpoint_r50.pkl'
+#  WEIGHTS: 'http://dl.fbaipublicfiles.com/cutler/checkpoints/dino_RN50_pretrain_d2_format.pkl'
   MASK_ON: True
   BACKBONE:
     FREEZE_AT: 0
@@ -32,17 +32,20 @@ MODEL:
     NUM_CLASSES: 1
     SCORE_THRESH_TEST: 0.0
     POSITIVE_FRACTION: 0.25
-    USE_DROPLOSS: False
+    USE_DROPLOSS: True
     DROPLOSS_IOU_THRESH: 0.01
+  RPN:
+    POST_NMS_TOPK_TRAIN: 4000
+    NMS_THRESH: 0.65
 DATASETS:
-  TRAIN: ("tomo_mito_r1",) # round 1
-  # TRAIN: ("imagenet_train_r2",) # round 2
+  TRAIN: ("klh_train",)
 SOLVER:
   IMS_PER_BATCH: 24
-  BASE_LR: 0.005
+  BASE_LR: 0.01
+  WEIGHT_DECAY: 0.00005
   STEPS: (80000,)
-  MAX_ITER: 5000
-  GAMMA: 1.0
+  MAX_ITER: 9000
+  GAMMA: 0.02
   CLIP_GRADIENTS:
     CLIP_TYPE: norm
     CLIP_VALUE: 1.0
@@ -60,5 +63,4 @@ TEST:
     ENABLED: True
     NUM_ITER: 200
   DETECTIONS_PER_IMAGE: 100
-# OUTPUT_DIR: "output_new_dataset/self-train-r1/" # round 1
-OUTPUT_DIR: "output_new_dataset/self-train-r2/" # round 2
+OUTPUT_DIR: "output_klh_dataset/base_train/"

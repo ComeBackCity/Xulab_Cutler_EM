@@ -8,17 +8,19 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms.functional as VF
 
-MAX_ITER = 10
-POS_W = 7 
+MAX_ITER = 50
+POS_W = 3 
 POS_XY_STD = 3
 Bi_W = 10
-Bi_XY_STD = 50 
-Bi_RGB_STD = 5
+Bi_XY_STD = 10 
+Bi_RGB_STD = 0.01
 
 def densecrf(image, mask):
     h, w = mask.shape
     mask = mask.reshape(1, h, w)
-    fg = mask.astype(float) 
+    #bg = mask.astype(float) 
+    #fg = 1 - bg
+    fg = mask.astype(float)
     bg = 1 - fg
     output_logits = torch.from_numpy(np.concatenate((bg,fg), axis=0))
 
@@ -29,6 +31,7 @@ def densecrf(image, mask):
     output_probs = F.softmax(output_logits, dim=0).cpu().numpy()
 
     c = output_probs.shape[0]
+    #c = 5
     h = output_probs.shape[1]
     w = output_probs.shape[2]
 
@@ -40,12 +43,14 @@ def densecrf(image, mask):
     # the strength of the location and image content bilaterals, respectively.
     # print(type(image))
     image = np.expand_dims(image, axis=2)
-    pairwise_energy = utils.create_pairwise_bilateral(sdims=(10,10), schan=(0.01,), img=image, chdim=2)
+    pairwise_energy = utils.create_pairwise_bilateral(sdims=(Bi_XY_STD, Bi_XY_STD), schan=(Bi_RGB_STD,), img=image, chdim=2)
+    pairwise_gauss = utils.create_pairwise_gaussian(sdims=(POS_XY_STD, POS_XY_STD), shape=((w, h)))
     image = np.squeeze(image)
 
     d = dcrf.DenseCRF2D(w, h, c)
     d.setUnaryEnergy(U)
-    d.addPairwiseEnergy(pairwise_energy, compat=10)  # `compat` is the "strength" of this potential.
+    # d.addPairwiseEnergy(pairwise_energy, compat=Bi_W)  # `compat` is the "strength" of this potential.
+    # d.addPairwiseEnergy(pairwise_gauss, compat=POS_W)
     
     # d.addPairwiseGaussian(sxy=POS_XY_STD, compat=POS_W)
     # d.addPairwiseBilateral(sxy=Bi_XY_STD, srgb=Bi_RGB_STD, rgbim=image, compat=Bi_W)

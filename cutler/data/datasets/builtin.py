@@ -65,8 +65,12 @@ _PREDEFINED_SPLITS_TOMO["tomo_mito"] = {
     # "tomo_mito_train_r1" : 2,
     "tomo_mito_test" : ("dataset_ramisa/test", "dataset_ramisa/annotations_generated_test/imagenet_train_fixsize480_tau0.15_N3_0_1.json"),
     "tomo_mito_test_r1" : ("dataset_ramisa/test", "dataset_ramisa/annotations_generated_test/cutler_tomo_mito_new_test_r1.json"),
-    "tomo_mito_new": ("dataset_new/train", "dataset_new/maskcut_ann/2/imagenet_train_fixsize224_tau0.3_N3.json")
+    "tomo_mito_new": ("dataset_new/train", "dataset_new/maskcut_ann/2/imagenet_train_fixsize224_tau0.3_N3.json"),
+    "tomo_mito_new_r1": ("dataset_new/train", "dataset_new/maskcut_ann/2/cutler_tomo_train_r1.json"),
+    "tomo_mito_new_r2": ("dataset_new/train", "dataset_new/maskcut_ann/2/cutler_tomo_train_r2.json"),
+    "klh_train": ("klh_dataset/train", "klh_dataset/maskcut_ann/imagenet_train_fixsize224_tau0.15_N3.json")
 }
+
 
 
 

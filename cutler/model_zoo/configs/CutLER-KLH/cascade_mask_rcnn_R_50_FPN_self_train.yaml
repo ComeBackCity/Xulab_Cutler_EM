@@ -10,12 +10,12 @@ DATALOADER:
 MODEL:
   # PIXEL_MEAN: [123.675, 116.280, 103.530]
   # PIXEL_STD: [58.395, 57.120, 57.375]
-  PIXEL_MEAN: [ 130.3068 ]
-  PIXEL_STD: [ 64.8786 ]
+  PIXEL_MEAN: [ 109.442 ]
+  PIXEL_STD: [ 6.4272 ]
   # WEIGHTS: 'http://dl.fbaipublicfiles.com/cutler/checkpoints/cutler_cascade_r1.pth' # round 1
   # WEIGHTS: 'http://dl.fbaipublicfiles.com/cutler/checkpoints/cutler_cascade_r2.pth' # round 2
   # WEIGHTS: './output_new_dataset/model_final.pth' # Round 1
-  WEIGHTS: './output_new_dataset/model_final.pth' # Round 1
+  WEIGHTS: './output_klh_dataset/base-train/model_final.pth' # Round 1
   MASK_ON: True
   BACKBONE:
     FREEZE_AT: 0
@@ -35,7 +35,7 @@ MODEL:
     USE_DROPLOSS: False
     DROPLOSS_IOU_THRESH: 0.01
 DATASETS:
-  TRAIN: ("tomo_mito_r1",) # round 1
+  TRAIN: ("klh_train_r1",) # round 1
   # TRAIN: ("imagenet_train_r2",) # round 2
 SOLVER:
   IMS_PER_BATCH: 24

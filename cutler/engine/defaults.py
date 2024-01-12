@@ -467,7 +467,7 @@ class DefaultTrainer(TrainerBase):
 
         # Do evaluation after checkpointer, because then if it fails,
         # we can use the saved checkpoint to debug.
-        ret.append(hooks.EvalHook(cfg.TEST.EVAL_PERIOD, test_and_save_results))
+        # ret.append(hooks.EvalHook(cfg.TEST.EVAL_PERIOD, test_and_save_results))
 
         if comm.is_main_process():
             # Here the default print/log frequency of each writer is used.
@@ -494,12 +494,12 @@ class DefaultTrainer(TrainerBase):
             OrderedDict of results, if evaluation is enabled. Otherwise None.
         """
         super().train(self.start_iter, self.max_iter)
-        if len(self.cfg.TEST.EXPECTED_RESULTS) and comm.is_main_process():
-            assert hasattr(
-                self, "_last_eval_results"
-            ), "No evaluation results obtained during training!"
-            verify_results(self.cfg, self._last_eval_results)
-            return self._last_eval_results
+        #if len(self.cfg.TEST.EXPECTED_RESULTS) and comm.is_main_process():
+        #    assert hasattr(
+        #        self, "_last_eval_results"
+        #    ), "No evaluation results obtained during training!"
+        #    verify_results(self.cfg, self._last_eval_results)
+        #    return self._last_eval_results
 
     def run_step(self):
         self._trainer.iter = self.iter
