@@ -68,7 +68,9 @@ _PREDEFINED_SPLITS_TOMO["tomo_mito"] = {
     "tomo_mito_new": ("dataset_new/train", "dataset_new/maskcut_ann/2/imagenet_train_fixsize224_tau0.3_N3.json"),
     "tomo_mito_new_r1": ("dataset_new/train", "dataset_new/maskcut_ann/2/cutler_tomo_train_r1.json"),
     "tomo_mito_new_r2": ("dataset_new/train", "dataset_new/maskcut_ann/2/cutler_tomo_train_r2.json"),
-    "klh_train": ("klh_dataset/train", "klh_dataset/maskcut_ann/imagenet_train_fixsize224_tau0.15_N3.json")
+    "klh_train": ("klh_dataset/train", "klh_dataset/maskcut_ann/imagenet_train_fixsize224_tau0.15_N3.json"),
+    "apo_train": ("appoferritin/train", "appoferritin/maskcut_ann/imagenet_train_fixsize224_tau0.15_N10.json"),
+    "apo_test": ("appoferritin/test", "appoferritin/test_ann/annotation_test.json")
 }
 
 
